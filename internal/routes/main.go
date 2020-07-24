@@ -1,7 +1,10 @@
 package routes
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
+	"log"
 	"net/http"
 )
 
@@ -27,6 +30,14 @@ func (h *MainHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if val, err := h.Cache.Get(query); err == nil {
+		log.Printf("from cache: query: %s", query)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(val))
+		return
+	}
+
 	result, err := h.Provider.Suggest(query)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -34,7 +45,26 @@ func (h *MainHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := json.NewEncoder(w).Encode(result); err != nil {
+	var buf bytes.Buffer
+
+	err = json.NewEncoder(&buf).Encode(result)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	err = h.Cache.Set(query, buf.String())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	log.Printf("from provider: query: %s", query)
+
+	_, err = io.Copy(w, &buf)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
