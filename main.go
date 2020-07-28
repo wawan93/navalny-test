@@ -12,9 +12,7 @@ import (
 
 func main() {
 	token := os.Getenv("API_KEY")
-	provider := &providers.Dadata{
-		Token: token,
-	}
+	provider := providers.NewDadataProvider(token, "")
 
 	c := cache.NewInMemoryCache()
 

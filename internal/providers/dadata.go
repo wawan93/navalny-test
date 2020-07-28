@@ -3,13 +3,19 @@ package providers
 import "gopkg.in/webdeskltd/dadata.v2"
 
 type Dadata struct {
-	Token string
+	api *dadata.DaData
+}
+
+func NewDadataProvider(token, secret string) *Dadata {
+	api := dadata.NewDaData(token, secret)
+	return &Dadata{
+		api: api,
+	}
 }
 
 func (p *Dadata) Suggest(query string) ([]string, error) {
-	api := dadata.NewDaData(p.Token, "")
 	params := dadata.SuggestRequestParams{Query: query}
-	response, err := api.SuggestAddresses(params)
+	response, err := p.api.SuggestAddresses(params)
 	if err != nil {
 		return nil, err
 	}
